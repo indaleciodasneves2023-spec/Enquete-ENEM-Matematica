@@ -270,6 +270,28 @@
             border-left: 3px solid #3498db;
             padding-left: 15px;
         }
+
+        /* Estilos para feedback */
+        .feedback-message {
+            text-align: center;
+            padding: 10px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .feedback-correct {
+            background-color: #d5f4e6;
+            color: #27ae60;
+            border: 2px solid #27ae60;
+        }
+
+        .feedback-incorrect {
+            background-color: #fadbd8;
+            color: #e74c3c;
+            border: 2px solid #e74c3c;
+        }
     </style>
 </head>
 <body>
@@ -488,6 +510,7 @@
 
         let studentAnswers = [];
         let currentQuestion = 0;
+        let canAnswer = true; // Para controlar se o usuário pode responder
 
         // Funções para atualizar os campos dependentes
         function updateEducationLevels() {
@@ -599,10 +622,11 @@
                             </div>
                         `).join('')}
                     </div>
+                    <div id="feedbackMessage"></div>
                     <div style="margin-top: 20px;">
                         ${currentQuestion < questions.length - 1 ? 
-                            '<button class="btn" onclick="nextQuestion()">Próxima Questão →</button>' : 
-                            '<button class="btn btn-success" onclick="finishQuiz()">🏁 Finalizar Avaliação</button>'
+                            '<button class="btn" onclick="nextQuestion()" id="nextButton" style="display:none;">Próxima Questão →</button>' : 
+                            '<button class="btn btn-success" onclick="finishQuiz()" id="finishButton" style="display:none;">🏁 Finalizar Avaliação</button>'
                         }
                     </div>
                 </div>
@@ -612,9 +636,14 @@
             if (window.MathJax) {
                 MathJax.typeset();
             }
+            
+            canAnswer = true; // Permitir respostas novamente
         }
 
         function selectAnswer(answerIndex) {
+            if (!canAnswer) return; // Impedir múltiplas respostas
+            canAnswer = false; // Bloquear respostas adicionais
+            
             const options = document.querySelectorAll('.option');
             options.forEach(opt => {
                 opt.classList.remove('selected', 'incorrect');
@@ -625,20 +654,35 @@
 
             // Feedback imediato
             const correctIndex = questions[currentQuestion].correct;
+            const feedbackMessage = document.getElementById('feedbackMessage');
+            
             if (answerIndex !== correctIndex) {
                 event.target.classList.add('incorrect');
-                options[correctIndex].classList.add('selected');
+                
+                // Mostrar mensagem de erro
+                feedbackMessage.innerHTML = `<div class="feedback-message feedback-incorrect">❌ Resposta incorreta</div>`;
+                
+                // Avançar automaticamente após 2 segundos
+                setTimeout(() => {
+                    nextQuestion();
+                }, 2000);
             } else {
+                // Mostrar mensagem de acerto
+                feedbackMessage.innerHTML = `<div class="feedback-message feedback-correct">✅ Resposta correta!</div>`;
+                
+                // Mostrar botão para avançar
+                if (currentQuestion < questions.length - 1) {
+                    document.getElementById('nextButton').style.display = 'inline-block';
+                } else {
+                    document.getElementById('finishButton').style.display = 'inline-block';
+                }
+                
+                // Criar fogos de artifício para acerto
                 createFireworks();
             }
         }
 
         function nextQuestion() {
-            if (studentAnswers[currentQuestion] === undefined) {
-                alert('Por favor, selecione uma resposta!');
-                return;
-            }
-            
             currentQuestion++;
             loadQuestion();
         }
