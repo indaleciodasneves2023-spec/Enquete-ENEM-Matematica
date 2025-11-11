@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Avaliação Matemática</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- MathJax para formatação matemática -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .tab-container {
+            display: flex;
+            background: #34495e;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            background: #34495e;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+
+        .tab:hover {
+            background: #2c3e50;
+        }
+
+        .tab.active {
+            background: #3498db;
+        }
+
+        .content {
+            padding: 30px;
+            min-height: 500px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .question {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 5px solid #3498db;
+        }
+
+        .question h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .options {
+            display: grid;
+            gap: 10px;
+        }
+
+        .option {
+            padding: 15px;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option:hover {
+            border-color: #3498db;
+            background: #f1f8ff;
+        }
+
+        .option.selected {
+            border-color: #27ae60;
+            background: #d5f4e6;
+        }
+
+        .option.incorrect {
+            border-color: #e74c3c;
+            background: #fadbd8;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .firework {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            animation: explode 1s ease-out forwards;
+        }
+
+        @keyframes explode {
+            0% {
+                transform: translate(0, 0);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty));
+                opacity: 0;
+            }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .result {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .score {
+            font-size: 3em;
+            color: #3498db;
+            margin: 20px 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .teacher-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        #questionsList {
+            margin: 20px 0;
+        }
+
+        .question-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .login-form {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .math-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+            border: 1px solid #e9ecef;
+            font-size: 1.1em;
+            line-height: 1.5;
+        }
+
+        .theme-badge {
+            background: linear-gradient(135deg, #8B4513, #D2691E);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .dependent-field {
+            margin-left: 20px;
+            border-left: 3px solid #3498db;
+            padding-left: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Sistema de Avaliação</h1>
+        </div>
+
+        <div class="tab-container">
+            <button class="tab active" onclick="showTab('student')">Aluno</button>
+            <button class="tab" onclick="showTab('teacher')">Professor</button>
+        </div>
+
+        <!-- ABA DO ALUNO -->
+        <div id="studentTab" class="content">
+            <div id="studentForm">
+                <div class="form-group">
+                    <label for="school">Escola:</label>
+                    <select id="school" onchange="updateEducationLevels()">
+                        <option value="">Selecione sua escola</option>
+                        <option value="José Wilson">EEEFM Prof° José Wilson Pereira Leite</option>
+                        <option value="CEAM">CEAM - Colégio Estadual de Ensino Médio Integral Archangela Milhomem</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="educationLevel">Nível de Ensino:</label>
+                    <select id="educationLevel" onchange="updateClasses()" disabled>
+                        <option value="">Selecione o nível de ensino</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="studentClass">Turma/Série:</label>
+                    <select id="studentClass" disabled>
+                        <option value="">Selecione sua turma/série</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="studentName">Nome completo:</label>
+                    <input type="text" id="studentName" placeholder="Digite seu nome">
+                </div>
+
+                <button class="btn" onclick="startQuiz()">Iniciar Avaliação</button>
+            </div>
+
+            <div id="quizContainer" class="hidden">
+                <div id="questionsArea"></div>
+            </div>
+
+            <div id="resultsContainer" class="hidden">
+                <div class="result">
+                    <h2>🎉 Avaliação Concluída!</h2>
+                    <div class="score" id="finalScore">0/0</div>
+                    <p id="resultMessage"></p>
+                    <button class="btn btn-success" onclick="shareResults()">📤 Compartilhar Resultado</button>
+                    <button class="btn" onclick="resetQuiz()">🔄 Nova Tentativa</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA DO PROFESSOR -->
+        <div id="teacherTab" class="content hidden">
+            <div id="teacherLogin">
+                <div class="login-form">
+                    <h2>Acesso do Professor</h2>
+                    <div class="form-group">
+                        <label for="teacherPassword">Senha:</label>
+                        <input type="password" id="teacherPassword" placeholder="Digite a senha">
+                    </div>
+                    <button class="btn" onclick="loginTeacher()">Acessar</button>
+                </div>
+            </div>
+
+            <div id="teacherPanel" class="hidden">
+                <h2>Painel do Professor</h2>
+                <div class="teacher-panel">
+                    <h3>Gerenciar Questões</h3>
+                    
+                    <div class="form-group">
+                        <label for="newQuestion">Nova Questão:</label>
+                        <input type="text" id="newQuestion" placeholder="Digite a questão">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Opções:</label>
+                        <input type="text" id="optionA" placeholder="Opção A">
+                        <input type="text" id="optionB" placeholder="Opção B">
+                        <input type="text" id="optionC" placeholder="Opção C">
+                        <input type="text" id="optionD" placeholder="Opção D">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="correctAnswer">Resposta Correta:</label>
+                        <select id="correctAnswer">
+                            <option value="0">A</option>
+                            <option value="1">B</option>
+                            <option value="2">C</option>
+                            <option value="3">D</option>
+                        </select>
+                    </div>
+
+                    <button class="btn" onclick="addQuestion()">Adicionar Questão</button>
+
+                    <div id="questionsList">
+                        <!-- Lista de questões será gerada aqui -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração inicial
+        const TEACHER_PASSWORD = "prof123";
+        const TEACHER_WHATSAPP = "+5594991446645";
+        
+        let questions = JSON.parse(localStorage.getItem('quizQuestions')) || [
+            // MATRIZES (5 questões) - Corrigidas para melhor legibilidade
+            {
+                question: "Se A = \\(\\begin{bmatrix} 2 & 3 \\\\ 1 & 4 \\end{bmatrix}\\) e B = \\(\\begin{bmatrix} 5 & 1 \\\\ 2 & 3 \\end{bmatrix}\\), qual é o resultado de A + B?",
+                options: [
+                    "\\(\\begin{bmatrix} 7 & 4 \\\\ 3 & 7 \\end{bmatrix}\\)",
+                    "\\(\\begin{bmatrix} 3 & 4 \\\\ 3 & 7 \\end{bmatrix}\\)", 
+                    "\\(\\begin{bmatrix} 7 & 3 \\\\ 4 & 7 \\end{bmatrix}\\)",
+                    "\\(\\begin{bmatrix} 7 & 4 \\\\ 3 & 1 \\end{bmatrix}\\)"
+                ],
+                correct: 0
+            },
+            {
+                question: "Dada a matriz C = \\(\\begin{bmatrix} 4 & 2 \\\\ 1 & 3 \\end{bmatrix}\\), qual é o valor do determinante de C?",
+                options: ["10", "12", "14", "16"],
+                correct: 0
+            },
+            {
+                question: "Qual é a matriz transposta de D = \\(\\begin{bmatrix} 1 & 4 & 7 \\\\ 2 & 5 & 8 \\\\ 3 & 6 & 9 \\end{bmatrix}\\)?",
+                options: [
+                    "\\(\\begin{bmatrix} 1 & 2 & 3 \\\\ 4 & 5 & 6 \\\\ 7 & 8 & 9 \\end{bmatrix}\\)",
+                    "\\(\\begin{bmatrix} 1 & 4 & 7 \\\\ 2 & 5 & 8 \\\\ 3 & 6 & 9 \\end{bmatrix}\\)", 
+                    "\\(\\begin{bmatrix} 9 & 6 & 3 \\\\ 8 & 5 & 2 \\\\ 7 & 4 & 1 \\end{bmatrix}\\)",
+                    "\\(\\begin{bmatrix} 3 & 2 & 1 \\\\ 6 & 5 & 4 \\\\ 9 & 8 & 7 \\end{bmatrix}\\)"
+                ],
+                correct: 0
+            },
+            {
+                question: "Se E = \\(\\begin{bmatrix} 2 & 0 \\\\ 0 & 2 \\end{bmatrix}\\) e F = \\(\\begin{bmatrix} 3 & 1 \\\\ 2 & 4 \\end{bmatrix}\\), qual é o resultado de E × F?",
+                options: [
+                    "\\(\\begin{bmatrix} 6 & 2 \\\\ 4 & 8 \\end{bmatrix}\\)",
+                    "\\(\\begin{bmatrix} 5 & 1 \\\\ 2 & 6 \\end{bmatrix}\\)", 
+                    "\\(\\begin{bmatrix} 6 & 0 \\\\ 0 & 8 \\end{bmatrix}\\)",
+                    "\\(\\begin{bmatrix} 2 & 1 \\\\ 2 & 4 \\end{bmatrix}\\)"
+                ],
+                correct: 0
+            },
+            {
+                question: "Qual é o elemento a₂₁ da matriz G = \\(\\begin{bmatrix} 5 & 8 & 1 \\\\ 3 & 9 & 4 \\\\ 7 & 2 & 6 \\end{bmatrix}\\)?",
+                options: ["3", "8", "9", "4"],
+                correct: 0
+            },
+
+            // ANÁLISE COMBINATÓRIA (5 questões)
+            {
+                question: "De quantas maneiras diferentes podemos organizar 4 livros em uma prateleira?",
+                options: ["16 maneiras", "24 maneiras", "32 maneiras", "48 maneiras"],
+                correct: 1
+            },
+            {
+                question: "Em uma sala com 8 alunos, de quantas formas podemos escolher 3 para formar uma comissão?",
+                options: ["36 formas", "56 formas", "64 formas", "72 formas"],
+                correct: 1
+            },
+            {
+                question: "Quantos números de 3 algarismos diferentes podemos formar com os dígitos 1, 2, 3, 4 e 5?",
+                options: ["50 números", "60 números", "70 números", "80 números"],
+                correct: 1
+            },
+            {
+                question: "Uma equipe de 5 pessoas precisa escolher um capitão e um vice-capitão. De quantas maneiras isso pode ser feito?",
+                options: ["10 maneiras", "15 maneiras", "20 maneiras", "25 maneiras"],
+                correct: 2
+            },
+            {
+                question: "Quantos anagramas diferentes podemos formar com a palavra 'MATEMÁTICA'?",
+                options: ["3628800 anagramas", "1814400 anagramas", "907200 anagramas", "453600 anagramas"],
+                correct: 3
+            },
+
+            // PROBABILIDADE (5 questões)
+            {
+                question: "Ao lançar um dado honesto, qual a probabilidade de obter um número par?",
+                options: ["1/6", "1/3", "1/2", "2/3"],
+                correct: 2
+            },
+            {
+                question: "Em uma urna com 5 bolas vermelhas e 3 bolas azuis, qual a probabilidade de sortear uma bola azul?",
+                options: ["1/8", "1/4", "3/8", "1/2"],
+                correct: 2
+            },
+            {
+                question: "Qual a probabilidade de obter duas caras ao lançar duas moedas honestas?",
+                options: ["1/8", "1/4", "1/2", "3/4"],
+                correct: 1
+            },
+            {
+                question: "Em um baralho de 52 cartas, qual a probabilidade de sortear um ás?",
+                options: ["1/13", "1/26", "1/52", "4/13"],
+                correct: 0
+            },
+            {
+                question: "Se a probabilidade de chover é 30%, qual a probabilidade de não chover?",
+                options: ["30%", "50%", "70%", "90%"],
+                correct: 2
+            }
+        ];
+
+        let studentAnswers = [];
+        let currentQuestion = 0;
+
+        // Funções para atualizar os campos dependentes
+        function updateEducationLevels() {
+            const school = document.getElementById('school').value;
+            const educationLevel = document.getElementById('educationLevel');
+            const studentClass = document.getElementById('studentClass');
+            
+            // Reset dos campos dependentes
+            educationLevel.innerHTML = '<option value="">Selecione o nível de ensino</option>';
+            studentClass.innerHTML = '<option value="">Selecione sua turma/série</option>';
+            studentClass.disabled = true;
+            
+            if (school === 'José Wilson') {
+                educationLevel.disabled = false;
+                educationLevel.innerHTML += `
+                    <option value="Fundamental">Ensino Fundamental</option>
+                    <option value="Médio">Ensino Médio</option>
+                `;
+            } else if (school === 'CEAM') {
+                educationLevel.disabled = false;
+                educationLevel.innerHTML += `
+                    <option value="Médio">Ensino Médio Integral</option>
+                `;
+                // Para CEAM, atualizar automaticamente as turmas
+                updateClasses();
+            } else {
+                educationLevel.disabled = true;
+                studentClass.disabled = true;
+            }
+        }
+
+        function updateClasses() {
+            const school = document.getElementById('school').value;
+            const educationLevel = document.getElementById('educationLevel').value;
+            const studentClass = document.getElementById('studentClass');
+            
+            studentClass.innerHTML = '<option value="">Selecione sua turma/série</option>';
+            
+            if (school === 'José Wilson') {
+                if (educationLevel === 'Fundamental') {
+                    studentClass.disabled = false;
+                    studentClass.innerHTML += `
+                        <option value="7° Ano">7° Ano</option>
+                        <option value="8° Ano">8° Ano</option>
+                    `;
+                } else if (educationLevel === 'Médio') {
+                    studentClass.disabled = false;
+                    studentClass.innerHTML += `
+                        <option value="Regular">Ensino Regular</option>
+                        <option value="EJA">EJA</option>
+                    `;
+                }
+            } else if (school === 'CEAM') {
+                studentClass.disabled = false;
+                studentClass.innerHTML += `
+                    <option value="23.01">23.01</option>
+                    <option value="23.02">23.02</option>
+                    <option value="33.01">33.01</option>
+                    <option value="33.02">33.02</option>
+                `;
+            }
+        }
+
+        // Funções de navegação
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.content').forEach(content => content.classList.add('hidden'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+        }
+
+        // Funções do aluno
+        function startQuiz() {
+            const name = document.getElementById('studentName').value;
+            const school = document.getElementById('school').value;
+            const educationLevel = document.getElementById('educationLevel').value;
+            const studentClass = document.getElementById('studentClass').value;
+            
+            if (!name || !school || !educationLevel || !studentClass) {
+                alert('Por favor, preencha todos os campos!');
+                return;
+            }
+
+            document.getElementById('studentForm').classList.add('hidden');
+            document.getElementById('quizContainer').classList.remove('hidden');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            if (currentQuestion >= questions.length) {
+                finishQuiz();
+                return;
+            }
+
+            const question = questions[currentQuestion];
+            const questionsArea = document.getElementById('questionsArea');
+            
+            questionsArea.innerHTML = `
+                <div class="question">
+                    <h3>Questão ${currentQuestion + 1} de ${questions.length}</h3>
+                    <div class="math-display">
+                        ${question.question}
+                    </div>
+                    <div class="options">
+                        ${question.options.map((option, index) => `
+                            <div class="option" onclick="selectAnswer(${index})">
+                                ${String.fromCharCode(65 + index)}) ${option}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div style="margin-top: 20px;">
+                        ${currentQuestion < questions.length - 1 ? 
+                            '<button class="btn" onclick="nextQuestion()">Próxima Questão →</button>' : 
+                            '<button class="btn btn-success" onclick="finishQuiz()">🏁 Finalizar Avaliação</button>'
+                        }
+                    </div>
+                </div>
+            `;
+
+            // Reprocessar MathJax após inserir novo conteúdo
+            if (window.MathJax) {
+                MathJax.typeset();
+            }
+        }
+
+        function selectAnswer(answerIndex) {
+            const options = document.querySelectorAll('.option');
+            options.forEach(opt => {
+                opt.classList.remove('selected', 'incorrect');
+            });
+            
+            event.target.classList.add('selected');
+            studentAnswers[currentQuestion] = answerIndex;
+
+            // Feedback imediato
+            const correctIndex = questions[currentQuestion].correct;
+            if (answerIndex !== correctIndex) {
+                event.target.classList.add('incorrect');
+                options[correctIndex].classList.add('selected');
+            } else {
+                createFireworks();
+            }
+        }
+
+        function nextQuestion() {
+            if (studentAnswers[currentQuestion] === undefined) {
+                alert('Por favor, selecione uma resposta!');
+                return;
+            }
+            
+            currentQuestion++;
+            loadQuestion();
+        }
+
+        function finishQuiz() {
+            if (studentAnswers[currentQuestion] === undefined && currentQuestion < questions.length) {
+                alert('Por favor, selecione uma resposta para esta questão!');
+                return;
+            }
+
+            document.getElementById('quizContainer').classList.add('hidden');
+            document.getElementById('resultsContainer').classList.remove('hidden');
+
+            let score = 0;
+            questions.forEach((question, index) => {
+                if (studentAnswers[index] === question.correct) {
+                    score++;
+                }
+            });
+
+            const finalScore = document.getElementById('finalScore');
+            finalScore.textContent = `${score}/${questions.length}`;
+
+            const percentage = (score / questions.length) * 100;
+            const message = document.getElementById('resultMessage');
+            
+            if (percentage >= 80) {
+                message.textContent = "🏆 Excelente! Você dominou os desafios matemáticos!";
+                message.style.color = "#27ae60";
+                createFireworks();
+            } else if (percentage >= 60) {
+                message.textContent = "⭐ Bom trabalho! Continue estudando!";
+                message.style.color = "#f39c12";
+            } else if (percentage >= 40) {
+                message.textContent = "📚 Boa tentativa! Estude mais e tente novamente!";
+                message.style.color = "#e67e22";
+            } else {
+                message.textContent = "💪 Não desista! A prática leva à perfeição!";
+                message.style.color = "#e74c3c";
+            }
+
+            setTimeout(() => {
+                alert('Avaliação finalizada com sucesso! Seu resultado está pronto para ser compartilhado.');
+            }, 1000);
+        }
+
+        function createFireworks() {
+            const fireworks = document.createElement('div');
+            fireworks.className = 'fireworks';
+            document.body.appendChild(fireworks);
+
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    const firework = document.createElement('div');
+                    firework.className = 'firework';
+                    
+                    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffa500'];
+                    firework.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    
+                    const startX = Math.random() * window.innerWidth;
+                    const startY = Math.random() * window.innerHeight;
+                    const angle = Math.random() * 2 * Math.PI;
+                    const distance = 30 + Math.random() * 70;
+                    
+                    firework.style.left = startX + 'px';
+                    firework.style.top = startY + 'px';
+                    firework.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
+                    firework.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
+
+                    fireworks.appendChild(firework);
+                }, i * 40);
+            }
+
+            setTimeout(() => {
+                if (document.body.contains(fireworks)) {
+                    document.body.removeChild(fireworks);
+                }
+            }, 2000);
+        }
+
+        function shareResults() {
+            const name = document.getElementById('studentName').value;
+            const school = document.getElementById('school').value;
+            const educationLevel = document.getElementById('educationLevel').value;
+            const studentClass = document.getElementById('studentClass').value;
+            const score = document.getElementById('finalScore').textContent;
+            const percentage = (parseInt(score.split('/')[0]) / parseInt(score.split('/')[1]) * 100).toFixed(1);
+            
+            const message = `📊 Resultado da Avaliação de Matemática\n\n👤 Aluno: ${name}\n🏫 Escola: ${getSchoolFullName(school)}\n📚 Nível: ${educationLevel}\n🧩 Turma: ${studentClass}\n📊 Nota: ${score} (${percentage}%)\n📅 Data: ${new Date().toLocaleDateString('pt-BR')}\n\nAvaliação sobre matrizes, análise combinatória e probabilidade!`;
+
+            const whatsappUrl = `https://wa.me/${TEACHER_WHATSAPP}?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        function getSchoolFullName(schoolCode) {
+            if (schoolCode === 'José Wilson') {
+                return 'EEEFM Prof° José Wilson Pereira Leite';
+            } else if (schoolCode === 'CEAM') {
+                return 'CEAM - Colégio Estadual de Ensino Médio Integral Archangela Milhomem';
+            }
+            return schoolCode;
+        }
+
+        function resetQuiz() {
+            currentQuestion = 0;
+            studentAnswers = [];
+            document.getElementById('resultsContainer').classList.add('hidden');
+            document.getElementById('studentForm').classList.remove('hidden');
+        }
+
+        // Funções do professor
+        function loginTeacher() {
+            const password = document.getElementById('teacherPassword').value;
+            
+            if (password === TEACHER_PASSWORD) {
+                document.getElementById('teacherLogin').classList.add('hidden');
+                document.getElementById('teacherPanel').classList.remove('hidden');
+                loadQuestionsList();
+            } else {
+                alert('Senha incorreta! Tente novamente.');
+            }
+        }
+
+        function loadQuestionsList() {
+            const questionsList = document.getElementById('questionsList');
+            questionsList.innerHTML = '<h4>Questões Cadastradas:</h4>';
+
+            questions.forEach((question, index) => {
+                const questionItem = document.createElement('div');
+                questionItem.className = 'question-item';
+                questionItem.innerHTML = `
+                    <strong>Q${index + 1}:</strong> ${question.question.substring(0, 80)}...
+                    <br>
+                    <small>Resposta: ${String.fromCharCode(65 + question.correct)}</small>
+                    <button class="btn btn-danger" onclick="deleteQuestion(${index})" style="float: right; padding: 5px 10px; font-size: 12px;">🗑️ Excluir</button>
+                `;
+                questionsList.appendChild(questionItem);
+            });
+        }
+
+        function addQuestion() {
+            const newQuestion = document.getElementById('newQuestion').value;
+            const optionA = document.getElementById('optionA').value;
+            const optionB = document.getElementById('optionB').value;
+            const optionC = document.getElementById('optionC').value;
+            const optionD = document.getElementById('optionD').value;
+            const correctAnswer = parseInt(document.getElementById('correctAnswer').value);
+
+            if (!newQuestion || !optionA || !optionB || !optionC || !optionD) {
+                alert('Por favor, preencha todos os campos!');
+                return;
+            }
+
+            questions.push({
+                question: newQuestion,
+                options: [optionA, optionB, optionC, optionD],
+                correct: correctAnswer
+            });
+
+            localStorage.setItem('quizQuestions', JSON.stringify(questions));
+            
+            // Limpar campos
+            document.getElementById('newQuestion').value = '';
+            document.getElementById('optionA').value = '';
+            document.getElementById('optionB').value = '';
+            document.getElementById('optionC').value = '';
+            document.getElementById('optionD').value = '';
+
+            loadQuestionsList();
+            alert('Questão adicionada com sucesso!');
+        }
+
+        function deleteQuestion(index) {
+            if (confirm('Tem certeza que deseja excluir esta questão?')) {
+                questions.splice(index, 1);
+                localStorage.setItem('quizQuestions', JSON.stringify(questions));
+                loadQuestionsList();
+                alert('Questão excluída!');
+            }
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Sistema de Avaliação carregado!');
+            // Configurar MathJax
+            window.MathJax = {
+                tex: {
+                    inlineMath: [['$', '$'], ['\\(', '\\)']]
+                },
+                svg: {
+                    fontCache: 'global'
+                }
+            };
+        });
+    </script>
+</body>
+</html>
